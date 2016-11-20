@@ -1,0 +1,7 @@
+name: CrackedLogin
+version: 1.0
+description: A plugin which will authenticate a user using a remote authentication system.
+load: STARTUP
+author: krconv
+main: krconverse.bukkit.crackedlogin.CrackedLogin
+softdepend: [PacketListenerApi]
