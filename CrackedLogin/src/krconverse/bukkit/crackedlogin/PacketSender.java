@@ -23,7 +23,8 @@ public class PacketSender {
      *            The player to send it to.
      */
     public void send(Object packet, Player player) {
-	/*
+	/* this version independent attempt was not used because the 
+	 * R1 version part wasn't captured by bukkit's version method
 	 * // capture the full version and strip it down to its base version
 	 * number String version = Bukkit.getVersion(); version =
 	 * version.substring(version.indexOf("(MC: ") + 5); version =
