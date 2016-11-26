@@ -13,6 +13,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.event.player.PlayerLoginEvent.Result;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -75,14 +76,35 @@ public class PlayerLoginListener implements Listener {
      *            The event arguments
      */
     @EventHandler
-    public void onLogout(PlayerQuitEvent event) {
+    public void onQuit(PlayerQuitEvent event) {
+	deauthenticate(event.getPlayer());
+    }
+
+    /**
+     * Deauthenticate players when they are kicked from the game.
+     * 
+     * @param event
+     *            The event arguments
+     */
+    @EventHandler
+    public void onKick(PlayerKickEvent event) {
+	deauthenticate(event.getPlayer());
+    }
+
+    /**
+     * Deauthenticates a player and stops the packet listener if it was the last
+     * unauthenticated player.
+     * 
+     * @param player
+     *            The player to deauthenticate
+     */
+    private void deauthenticate(Player player) {
 	// deauthenticate the player that quit
-	if (plugin.getAuthenticator().isAuthenticated(event.getPlayer())) {
-	    plugin.getAuthenticator().deauthenticate(event.getPlayer());
-	} else {
-	    // stop the packet listener if there are no unauthenticated players
+	if (plugin.getAuthenticator().isAuthenticated(player)) {
+	    plugin.getAuthenticator().deauthenticate(player);
+	    // stop the packet listener if there are no other unauthenticated players
 	    Collection<? extends Player> players = plugin.getServer().getOnlinePlayers();
-	    players.remove(event.getPlayer());
+	    players.remove(player);
 	    if (!plugin.getAuthenticator().anyUnauthenticated(players)) {
 		plugin.getPacketListener().stopListening();
 	    }
@@ -97,7 +119,12 @@ public class PlayerLoginListener implements Listener {
      */
     private void timeoutAuthentication(Player player) {
 	if (!plugin.getAuthenticator().isAuthenticated(player)) {
-	    player.kickPlayer(plugin.getConfig().getString("messages.TimeoutKick"));
+	    // kick the player
+	    plugin.getServer().getScheduler().runTask(plugin, new Runnable() {
+		public void run() {
+		    player.kickPlayer(plugin.getConfig().getString("messages.TimeoutKick"));
+		}
+	    });
 	}
     }
 
