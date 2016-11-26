@@ -44,7 +44,7 @@ public class PlayerLoginListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onLogin(PlayerLoginEvent event) {
 	// see if the played is allowed to join
-	Player player = event.getPlayer();
+	final Player player = event.getPlayer();
 	if (!plugin.getAuthenticator().canJoin(player)) {
 	    // the player isn't allowed to join
 	    if (plugin.getAuthenticator().isBanned(player)) {
