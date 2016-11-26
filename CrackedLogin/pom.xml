@@ -5,6 +5,7 @@
 	<artifactId>CrackedLogin</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>CrackedLogin</name>
+	<description>A plugin which will authenticate a user using a remote authentication system.</description>
 	<repositories>
 		<repository>
 			<id>spigot-repo</id>
@@ -78,5 +79,6 @@
 	</dependencies>
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<mainClassPath>krconverse.bukkit.crackedlogin.CrackedLogin</mainClassPath>
 	</properties>
 </project>
