@@ -1,0 +1,12 @@
+authentication:
+  URL:
+    UseHTTPS: true
+    Host: users.wpi.edu
+    Path: ~d2/auth
+  Timeout: 30
+messages:
+  NotRegisteredLoginKick: You are not registered!
+  BannedLoginKick: You are banned!
+  OtherLoginKick: You cannot log in! Contact an administrator if you believe this is incorrect.
+  TimeoutKick: You must enter your password to login!
+  BannedKick: You have been banned!
