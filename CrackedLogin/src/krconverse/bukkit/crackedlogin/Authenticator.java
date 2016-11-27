@@ -5,24 +5,24 @@
  */
 package krconverse.bukkit.crackedlogin;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Collection;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.HashSet;
 import java.util.logging.Level;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
-import org.apache.http.client.HttpClient;
+import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.ResponseHandler;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.utils.URIBuilder;
+import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.util.EntityUtils;
 import org.bukkit.entity.Player;
 
 /**
@@ -31,10 +31,9 @@ import org.bukkit.entity.Player;
 public class Authenticator {
     private CrackedLogin plugin;
     private URI uri; // the authentication url
-    private List<Player> authenticatedUsers; // players that have been
+    private HashSet<Player> authenticatedUsers; // players that have been
 					     // authenticated
-    private HttpClient httpclient;
-    
+
     /**
      * Creates a new tool for authentication.
      * 
@@ -45,8 +44,7 @@ public class Authenticator {
      */
     public Authenticator(String uri, CrackedLogin plugin) throws URISyntaxException {
 	this.uri = new URI(uri);
-	this.authenticatedUsers = new LinkedList<Player>();
-	this.httpclient = HttpClients.createDefault();
+	this.authenticatedUsers = new HashSet<Player>();
 	this.plugin = plugin;
     }
 
@@ -60,16 +58,18 @@ public class Authenticator {
     public boolean canJoin(Player player) {
 	boolean result = false;
 	try {
-	    result = get(new BasicNameValuePair("username", player.getName()), "join");
+	    result = get(new BasicNameValuePair("username", player.getName()), "canJoin");
 	} catch (URISyntaxException | IOException e) {
 	    plugin.getLogger().log(Level.SEVERE, "Could not reach the authentication server!", e);
 	}
 	return result;
     }
-    
+
     /**
      * Bans a player on the authentication server.
-     * @param player The player to ban.
+     * 
+     * @param player
+     *            The player to ban.
      */
     public void ban(Player player) {
 	// TODO add implementation for banning
@@ -77,7 +77,9 @@ public class Authenticator {
 
     /**
      * Unbans a player on the authentication server.
-     * @param player The player to unban.
+     * 
+     * @param player
+     *            The player to unban.
      */
     public void unban(Player player) {
 	// TODO add implementation for unbanning
@@ -93,13 +95,13 @@ public class Authenticator {
     public boolean isBanned(Player player) {
 	boolean result = false;
 	try {
-	    result = get(new BasicNameValuePair("username", player.getName()), "banned");
+	    result = get(new BasicNameValuePair("username", player.getName()), "isBanned");
 	} catch (URISyntaxException | IOException e) {
 	    plugin.getLogger().log(Level.SEVERE, "Could not reach the authentication server!", e);
 	}
 	return result;
     }
-    
+
     /**
      * Determines whether the given player is registered on the server.
      * 
@@ -110,7 +112,7 @@ public class Authenticator {
     public boolean isRegistered(Player player) {
 	boolean result = false;
 	try {
-	    result = get(new BasicNameValuePair("username", player.getName()), "registered");
+	    result = get(new BasicNameValuePair("username", player.getName()), "isRegistered");
 	} catch (URISyntaxException | IOException e) {
 	    plugin.getLogger().log(Level.SEVERE, "Could not reach the authentication server!", e);
 	}
@@ -129,10 +131,8 @@ public class Authenticator {
     public boolean authenticate(Player player, String password) {
 	boolean result = false;
 	try {
-	    result = get(new NameValuePair[] { 
-		    new BasicNameValuePair("username", player.getName()),
-		    new BasicNameValuePair("password", password) 
-		    }, "authenticate");
+	    result = get(new NameValuePair[] { new BasicNameValuePair("username", player.getName()),
+		    new BasicNameValuePair("password", password) }, "canAuthenticate");
 	} catch (URISyntaxException | IOException e) {
 	    plugin.getLogger().log(Level.SEVERE, "Could not reach the authentication server!", e);
 	}
@@ -141,7 +141,7 @@ public class Authenticator {
 	}
 	return result;
     }
-    
+
     /**
      * Deauthenticates a player.
      * 
@@ -150,36 +150,41 @@ public class Authenticator {
      */
     public void deauthenticate(Player player) {
 	if (authenticatedUsers.contains(player)) {
-	    authenticatedUsers.add(player);
+	    authenticatedUsers.remove(player);
 	}
     }
-    
+
     /**
      * Determines whether a player is currently authenticated.
-     * @param player The player to check.
+     * 
+     * @param player
+     *            The player to check.
      * @return Whether the player is currently authenticated.
      */
     public boolean isAuthenticated(Player player) {
 	return authenticatedUsers.contains(player);
     }
-    
+
     /**
-     * Determines whether there are any unauthenticated users in the
-     * given list of players.
-     * @param players The players to check.
+     * Determines whether there are any unauthenticated users in the given list
+     * of players.
+     * 
+     * @param players
+     *            The players to check.
      * @return Whether any of the given players are not authenticated.
      */
     public boolean anyUnauthenticated(Collection<? extends Player> players) {
 	for (Player player : players) {
 	    if (!isAuthenticated(player)) {
-		return false;
+		return true;
 	    }
 	}
-	return true;
+	return false;
     }
 
     /**
      * Determines whether there are any unauthenticated users on the server.
+     * 
      * @return Whether any joined players are not authenticated.
      */
     public boolean anyUnauthenticated() {
@@ -199,17 +204,35 @@ public class Authenticator {
      * @throws IOException
      *             Thrown if there is an error while making the request.
      */
-    private boolean get(NameValuePair[] parameters, String query) throws URISyntaxException, IOException {
-	// build the request
-	HttpGet get = new HttpGet(
-		new URIBuilder(this.uri).setParameters(parameters).setParameter("q", query).build());
-	// send the request
-	HttpResponse response = httpclient.execute(get);
-	// grab and parse the content of the response
-	HttpEntity entity = response.getEntity();
-	BufferedReader reader = new BufferedReader(new InputStreamReader(entity.getContent()));
-	boolean result = reader.readLine().equals("true");
-	reader.close();
+    private boolean get(NameValuePair[] parameters, String query) throws IOException, URISyntaxException {
+
+	CloseableHttpClient httpclient = HttpClients.createMinimal();
+	boolean result = false;
+	try {
+	    // build the request
+	    HttpGet get = new HttpGet(
+		    new URIBuilder(this.uri).setParameters(parameters).setParameter("q", query).build());
+
+	    // create a custom response handler
+	    ResponseHandler<String> responseHandler = new ResponseHandler<String>() {
+
+		public String handleResponse(final HttpResponse response) throws ClientProtocolException, IOException {
+		    int status = response.getStatusLine().getStatusCode();
+		    if (status >= 200 && status < 300) {
+			HttpEntity entity = response.getEntity();
+			return entity != null ? EntityUtils.toString(entity) : null;
+		    } else {
+			throw new ClientProtocolException("Unexpected response status: " + status);
+		    }
+		}
+
+	    };
+	    // send the request and parse the response to a boolean
+	    String response = httpclient.execute(get, responseHandler);
+	    result = Boolean.parseBoolean(response);
+	} finally {
+	    httpclient.close();
+	}
 	return result;
     }
 

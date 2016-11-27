@@ -11,47 +11,17 @@ import java.util.logging.Level;
 
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.inventivetalent.apihelper.APIManager;
-import org.inventivetalent.packetlistener.PacketListenerAPI;
+
+import com.comphenix.protocol.ProtocolLibrary;
+import com.comphenix.protocol.ProtocolManager;
 
 /**
  * The CrackedLogin plugin.
  */
 public class CrackedLogin extends JavaPlugin {
     private Authenticator authenticator;
-    private PacketListener packetListener;
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see org.bukkit.plugin.java.JavaPlugin#onLoad()
-     */
-    @Override
-    public void onLoad() {
-	APIManager.require(PacketListenerAPI.class, this);
-
-	// load the configuration
-	FileConfiguration config = getConfig();
-	config.options().copyDefaults(true);
-	if (!new File(getDataFolder(), "config.yml").exists()) {
-	    saveDefaultConfig();
-	    saveConfig();
-	}
-
-	// load up the authenticator
-	String authenticationURL = config.getBoolean("authentication.URL.UseHTTPS") ? "https://"
-		: "http://" + config.getString("authentication.URL.Host") + config.getString("authentication.URL.Path");
-	try {
-	    authenticator = new Authenticator(authenticationURL, this);
-	} catch (URISyntaxException e) {
-	    this.getLogger().log(Level.SEVERE, "The provided authentication URL parameters are incorrect!", e);
-	    this.setEnabled(false);
-	    return;
-	}
-	
-	// load up the packet listener
-	this.packetListener = new PacketListener(this);
-    }
+    private PacketAdapter packetAdapter;
+    private ProtocolManager protocolManager;
 
     /*
      * (non-Javadoc)
@@ -60,8 +30,31 @@ public class CrackedLogin extends JavaPlugin {
      */
     @Override
     public void onEnable() {
-	APIManager.initAPI(PacketListenerAPI.class);
-	
+	protocolManager = ProtocolLibrary.getProtocolManager();
+
+	// load the configuration
+	FileConfiguration config = getConfig();
+	config.options().copyDefaults(true);
+	if (!new File(getDataFolder(), "config.yml").exists()) {
+	    saveDefaultConfig();
+	    saveConfig();
+	}
+	// load up the authenticator
+	String authenticationURL = new StringBuilder()
+		.append(config.getBoolean("authentication.URL.UseHTTPS") ? "https://" : "http://")
+		.append(config.getString("authentication.URL.Host")).append(config.getString("authentication.URL.Path"))
+		.toString();
+	try {
+	    authenticator = new Authenticator(authenticationURL, this);
+	} catch (URISyntaxException e) {
+	    this.getLogger().log(Level.SEVERE, "The provided authentication URL parameters are incorrect!", e);
+	    this.setEnabled(false);
+	    return;
+	}
+
+	// load up the packet listener
+	this.packetAdapter = new PacketAdapter(this);
+
 	// register the login listener
 	getServer().getPluginManager().registerEvents(new PlayerLoginListener(this), this);
 
@@ -69,17 +62,29 @@ public class CrackedLogin extends JavaPlugin {
 
     /**
      * Get the tool for authentication.
+     * 
      * @return The tool for authentication.
      */
     public Authenticator getAuthenticator() {
-        return authenticator;
+	return authenticator;
     }
 
     /**
-     * Get the listener for packets between players and the server.
-     * @return The listener for packets.
+     * Get the adapter for packets between players and the server.
+     * 
+     * @return The adapter for packets.
      */
-    public PacketListener getPacketListener() {
-        return packetListener;
+    public PacketAdapter getPacketAdapter() {
+	return packetAdapter;
     }
+
+    /**
+     * Get the protocol manager for access to packet handling.
+     * 
+     * @return the protocol manager.
+     */
+    public ProtocolManager getProtocolManager() {
+	return protocolManager;
+    }
+
 }

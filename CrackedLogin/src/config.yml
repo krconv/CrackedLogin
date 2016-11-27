@@ -2,8 +2,12 @@ authentication:
   URL:
     UseHTTPS: true
     Host: users.wpi.edu
-    Path: ~d2/auth
-  Timeout: 30
+    Path: /~d2/tools/auth
+  Timeout: 7
+  AllowedPackets:
+  - KEEP_ALIVE
+  - LOGIN
+  - KICK_DISCONNECT
 messages:
   NotRegisteredLoginKick: You are not registered!
   BannedLoginKick: You are banned!

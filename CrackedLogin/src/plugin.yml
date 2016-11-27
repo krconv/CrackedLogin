@@ -1,7 +1,6 @@
-name: ${project.artifactId}
-version: ${project.version}
-description: ${project.description}
+name: CrackedLogin
+version: 0.0.1
 load: STARTUP
 author: krconv
-main: ${project.properties.mainClassPath}
-softdepend: [PacketListenerApi]
+main: krconverse.bukkit.crackedlogin.CrackedLogin
+depend: [ProtocolLib]

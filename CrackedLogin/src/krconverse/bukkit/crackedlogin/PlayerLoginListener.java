@@ -5,7 +5,7 @@
  */
 package krconverse.bukkit.crackedlogin;
 
-import java.util.Collection;
+import java.util.LinkedList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
@@ -13,7 +13,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.PlayerKickEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.event.player.PlayerLoginEvent.Result;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -59,7 +59,7 @@ public class PlayerLoginListener implements Listener {
 
 	// need to pause the player's communication to server until it
 	// authenticates
-	plugin.getPacketListener().startListening();
+	plugin.getPacketAdapter().startListening();
 
 	// timeout the player after configured timeout
 	Executors.newSingleThreadScheduledExecutor().schedule(new Runnable() {
@@ -70,6 +70,18 @@ public class PlayerLoginListener implements Listener {
     }
 
     /**
+     * Disables the join message.
+     * 
+     * @param event
+     *            The event arguments
+     */
+    @EventHandler
+    public void onJoin(PlayerJoinEvent event) {
+	event.getPlayer().setInvulnerable(true);
+	event.setJoinMessage(null);
+    }
+
+    /**
      * Deauthenticate players when they leave the game.
      * 
      * @param event
@@ -77,17 +89,10 @@ public class PlayerLoginListener implements Listener {
      */
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
-	deauthenticate(event.getPlayer());
-    }
-
-    /**
-     * Deauthenticate players when they are kicked from the game.
-     * 
-     * @param event
-     *            The event arguments
-     */
-    @EventHandler
-    public void onKick(PlayerKickEvent event) {
+	// don't show the quit message if the user never authenticated
+	if (!plugin.getAuthenticator().isAuthenticated(event.getPlayer())) {
+		event.setQuitMessage(null);
+	}
 	deauthenticate(event.getPlayer());
     }
 
@@ -102,11 +107,12 @@ public class PlayerLoginListener implements Listener {
 	// deauthenticate the player that quit
 	if (plugin.getAuthenticator().isAuthenticated(player)) {
 	    plugin.getAuthenticator().deauthenticate(player);
-	    // stop the packet listener if there are no other unauthenticated players
-	    Collection<? extends Player> players = plugin.getServer().getOnlinePlayers();
+	    // stop the packet listener if there are no other unauthenticated
+	    // players
+	    LinkedList<Player> players = new LinkedList<Player>(plugin.getServer().getOnlinePlayers());
 	    players.remove(player);
 	    if (!plugin.getAuthenticator().anyUnauthenticated(players)) {
-		plugin.getPacketListener().stopListening();
+		plugin.getPacketAdapter().stopListening();
 	    }
 	}
     }
@@ -117,7 +123,7 @@ public class PlayerLoginListener implements Listener {
      * @param player
      *            Player to timeout.
      */
-    private void timeoutAuthentication(Player player) {
+    private void timeoutAuthentication(final Player player) {
 	if (!plugin.getAuthenticator().isAuthenticated(player)) {
 	    // kick the player
 	    plugin.getServer().getScheduler().runTask(plugin, new Runnable() {

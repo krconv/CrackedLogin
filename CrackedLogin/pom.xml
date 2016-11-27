@@ -7,44 +7,53 @@
 	<name>CrackedLogin</name>
 	<description>A plugin which will authenticate a user using a remote authentication system.</description>
 	<repositories>
+		<!-- Repo for the Shade plugin -->
+		<repository>
+			<id>maven-plugins-repo</id>
+			<url>http://maven-plugins.sourceforge.net/repository</url>
+		</repository>
+		<!-- Repo for ProtocolLib and PacketWrapper -->
+		<repository>
+			<id>dmulloy2-repo</id>
+			<url>http://repo.dmulloy2.net/content/groups/public/</url>
+		</repository>
+		<!-- Repo for Spigot and Bukkit -->
 		<repository>
 			<id>spigot-repo</id>
 			<url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
 		</repository>
 	</repositories>
 	<build>
-		<pluginManagement>
-			<plugins>
-				<plugin>
-					<groupId>org.eclipse.m2e</groupId>
-					<artifactId>lifecycle-mapping</artifactId>
-					<version>1.0.0</version>
-					<configuration>
-						<lifecycleMappingMetadata>
-							<pluginExecutions>
-								<pluginExecution>
-									<pluginExecutionFilter>
-										<groupId>krconverse.bukkit</groupId>
-										<artifactId>CrackedLogin</artifactId>
-										<versionRange>
-											[0.0.1,)
-										</versionRange>
-										<goals>
-											<goal>add-classes</goal>
-										</goals>
-									</pluginExecutionFilter>
-									<action>
-										<ignore></ignore>
-									</action>
-								</pluginExecution>
-							</pluginExecutions>
-						</lifecycleMappingMetadata>
-					</configuration>
-				</plugin>
-			</plugins>
-		</pluginManagement>
+		<resources>
+			<resource>
+				<directory>src/</directory>
+				<includes>
+					<include>plugin.yml</include>
+					<include>config.yml</include>
+				</includes>
+			</resource>
+		</resources>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-shade-plugin</artifactId>
+				<version>2.4.3</version>
+				<configuration>
+					<createDependencyReducedPom>true</createDependencyReducedPom>
+				</configuration>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<goals>
+							<goal>shade</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
 	</build>
 	<dependencies>
+		<!-- HtmlClient -->
 		<dependency>
 			<groupId>org.apache.httpcomponents</groupId>
 			<artifactId>httpclient</artifactId>
@@ -54,6 +63,17 @@
 			<groupId>org.apache.httpcomponents</groupId>
 			<artifactId>httpcore</artifactId>
 			<version>4.4.4</version>
+		</dependency>
+		<!-- ProtocolLib API -->
+		<dependency>
+			<groupId>com.comphenix.protocol</groupId>
+			<artifactId>ProtocolLib-API</artifactId>
+			<version>4.1.0</version>
+		</dependency>
+		<dependency>
+			<groupId>com.comphenix.packetwrapper</groupId>
+			<artifactId>PacketWrapper</artifactId>
+			<version>1.11-R0.1-SNAPSHOT</version>
 		</dependency>
 		<!--Spigot API -->
 		<dependency>
@@ -69,16 +89,66 @@
 			<version>1.11-R0.1-SNAPSHOT</version>
 			<scope>provided</scope>
 		</dependency>
-		<!--CraftBukkit -->
-		<dependency>
-			<groupId>org.bukkit</groupId>
-			<artifactId>craftbukkit</artifactId>
-			<version>1.11-R0.1-SNAPSHOT</version>
-			<scope>provided</scope>
-		</dependency>
 	</dependencies>
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<mainClassPath>krconverse.bukkit.crackedlogin.CrackedLogin</mainClassPath>
 	</properties>
+	<profiles>
+		<profile>
+			<id>m2e</id>
+			<!-- This profile is only active when the property "m2e.version" is set, 
+				which is the case when building in Eclipse with m2e. -->
+			<activation>
+				<property>
+					<name>m2e.version</name>
+				</property>
+			</activation>
+			<build>
+				<pluginManagement>
+					<plugins>
+						<plugin>
+							<groupId>org.eclipse.m2e</groupId>
+							<artifactId>lifecycle-mapping</artifactId>
+							<version>1.0.0</version>
+							<configuration>
+								<lifecycleMappingMetadata>
+									<pluginExecutions>
+										<pluginExecution>
+											<pluginExecutionFilter>
+												<groupId>...</groupId>
+												<artifactId>...</artifactId>
+												<versionRange>[0,)</versionRange>
+												<goals>
+													<goal>...</goal>
+												</goals>
+											</pluginExecutionFilter>
+											<action>
+
+												<!-- either <ignore> XOR <execute>, you must remove the other 
+													one. -->
+
+												<!-- execute: tells m2e to run the execution just like command-line 
+													maven. from m2e's point of view, this is not recommended, because it is not 
+													deterministic and may make your eclipse unresponsive or behave strangely. -->
+												<execute>
+													<!-- runOnIncremental: tells m2e to run the plugin-execution 
+														on each auto-build (true) or only on full-build (false). -->
+													<runOnIncremental>false</runOnIncremental>
+												</execute>
+
+												<!-- ignore: tells m2eclipse to skip the execution. -->
+												<ignore />
+
+											</action>
+										</pluginExecution>
+									</pluginExecutions>
+								</lifecycleMappingMetadata>
+							</configuration>
+						</plugin>
+					</plugins>
+				</pluginManagement>
+			</build>
+		</profile>
+	</profiles>
 </project>
