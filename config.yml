@@ -1,8 +1,8 @@
 authentication:
   URL:
     UseHTTPS: true
-    Host: users.wpi.edu
-    Path: /~d2/tools/auth
+    Host: hostname
+    Path: path
   Timeout: 7
   AllowedPackets:
   - KEEP_ALIVE
@@ -13,4 +13,5 @@ messages:
   BannedLoginKick: You are banned!
   OtherLoginKick: You cannot log in! Contact an administrator if you believe this is incorrect.
   TimeoutKick: You must enter your password to login!
+  InvalidLogin: Invalid login attempt!
   BannedKick: You have been banned!

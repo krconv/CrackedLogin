@@ -60,7 +60,7 @@ public class PlayerLoginListener implements Listener {
 	// need to pause the player's communication to server until it
 	// authenticates
 	plugin.getPacketAdapter().startListening();
-
+	
 	// timeout the player after configured timeout
 	Executors.newSingleThreadScheduledExecutor().schedule(new Runnable() {
 	    public void run() {
@@ -79,6 +79,8 @@ public class PlayerLoginListener implements Listener {
     public void onJoin(PlayerJoinEvent event) {
 	event.getPlayer().setInvulnerable(true);
 	event.setJoinMessage(null);
+	// tell the user to login
+	event.getPlayer().sendMessage(PacketAdapter.WHITELIST_STRING + "Please enter your password to login (press T to type).");
     }
 
     /**
@@ -124,7 +126,7 @@ public class PlayerLoginListener implements Listener {
      *            Player to timeout.
      */
     private void timeoutAuthentication(final Player player) {
-	if (!plugin.getAuthenticator().isAuthenticated(player)) {
+	if (!plugin.getAuthenticator().isAuthenticated(player) && player.isOnline()) {
 	    // kick the player
 	    plugin.getServer().getScheduler().runTask(plugin, new Runnable() {
 		public void run() {

@@ -16,12 +16,14 @@ import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 
 import com.comphenix.packetwrapper.WrapperPlayClientChat;
+import com.comphenix.packetwrapper.WrapperPlayServerChat;
 import com.comphenix.packetwrapper.WrapperPlayServerPosition;
 import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.PacketType.Protocol;
 import com.comphenix.protocol.events.ListenerPriority;
 import com.comphenix.protocol.events.PacketContainer;
 import com.comphenix.protocol.events.PacketEvent;
+import com.comphenix.protocol.wrappers.WrappedChatComponent;
 
 /**
  * A listener which controls the flow of packets between players and the server.
@@ -31,6 +33,9 @@ public class PacketAdapter extends com.comphenix.protocol.events.PacketAdapter {
     private boolean isListening;
     private HashMap<Player, Queue<PacketContainer>> queuedPackets;
     private HashSet<String> allowedPackets;
+
+    public static final String WHITELIST_STRING = "\u0000";
+    private static final String WHITELIST_STRING_ESCAPED = "\\u0000";
 
     /**
      * Creates a new listener which will hold packets being sent to or from an
@@ -83,7 +88,7 @@ public class PacketAdapter extends com.comphenix.protocol.events.PacketAdapter {
 	    if (event.getPlayer() != null && !plugin.getAuthenticator().isAuthenticated(event.getPlayer())) {
 		// the player isn't authenticated
 		event.setCancelled(true);
-		if (event.getPacketType().name().equals("CHAT")) {
+		if (event.getPacketType() == PacketType.Play.Client.CHAT) {
 		    // the player sent a message, consider it the password
 		    String password = (String) new WrapperPlayClientChat(event.getPacket()).getMessage().toString();
 		    if (plugin.getAuthenticator().authenticate(event.getPlayer(), password)) {
@@ -107,6 +112,12 @@ public class PacketAdapter extends com.comphenix.protocol.events.PacketAdapter {
 			plugin.getServer().broadcastMessage(
 				ChatColor.YELLOW + event.getPlayer().getName() + " has joined the game");
 			event.getPlayer().setInvulnerable(false);
+		    } else { // invalid login attempt
+			plugin.getServer().getScheduler().runTask(plugin, new Runnable() {
+			    public void run() {
+				event.getPlayer().kickPlayer(plugin.getConfig().getString("messages.InvalidLogin"));
+			    }
+			});
 		    }
 		}
 	    }
@@ -125,28 +136,41 @@ public class PacketAdapter extends com.comphenix.protocol.events.PacketAdapter {
 	if (event.getPacketType().getProtocol() == Protocol.PLAY) {
 	    if (event.getPlayer() != null && !plugin.getAuthenticator().isAuthenticated(event.getPlayer())) {
 		if (!allowedPackets.contains(event.getPacketType().name())) {
-		    // we can't send this packet to an unauthenticated player
-		    event.setCancelled(true);
-		    // add the packet to the queue to send the player after
-		    // authentication
-		    if (!queuedPackets.containsKey(event.getPlayer())) {
-			queuedPackets.put(event.getPlayer(), new LinkedList<PacketContainer>());
+		    boolean isAllowed = false;
+
+		    // allow the blocked packet if we sent it with special
+		    // character
+		    if (event.getPacketType() == PacketType.Play.Server.CHAT) {
+			WrappedChatComponent message = new WrapperPlayServerChat(event.getPacket()).getMessage();
+			if (message.getJson().contains(WHITELIST_STRING_ESCAPED)) {
+			    isAllowed = true;
+			}
 		    }
-		    queuedPackets.get(event.getPlayer()).add(event.getPacket());
-		    // send fake needed packets
-		    if (event.getPacketType() == PacketType.Play.Server.POSITION) {
-			WrapperPlayServerPosition position = new WrapperPlayServerPosition();
-			position.setX(0);
-			position.setY(0);
-			position.setZ(0);
-			position.setPitch(0);
-			position.setYaw(0);
-			try {
-			    plugin.getProtocolManager().sendServerPacket(event.getPlayer(), position.getHandle(),
-				    false);
-			} catch (InvocationTargetException e) {
-			    plugin.getLogger().log(Level.WARNING,
-				    "Couldn't send a fake position packet to " + event.getPlayer(), e);
+		    if (!isAllowed) {
+			// we can't send this packet to an unauthenticated
+			// player
+			event.setCancelled(true);
+			// add the packet to the queue to send the player after
+			// authentication
+			if (!queuedPackets.containsKey(event.getPlayer())) {
+			    queuedPackets.put(event.getPlayer(), new LinkedList<PacketContainer>());
+			}
+			queuedPackets.get(event.getPlayer()).add(event.getPacket());
+			// send fake needed packets
+			if (event.getPacketType() == PacketType.Play.Server.POSITION) {
+			    WrapperPlayServerPosition position = new WrapperPlayServerPosition();
+			    position.setX(0);
+			    position.setY(0);
+			    position.setZ(0);
+			    position.setPitch(0);
+			    position.setYaw(0);
+			    try {
+				plugin.getProtocolManager().sendServerPacket(event.getPlayer(), position.getHandle(),
+					false);
+			    } catch (InvocationTargetException e) {
+				plugin.getLogger().log(Level.WARNING,
+					"Couldn't send a fake position packet to " + event.getPlayer(), e);
+			    }
 			}
 		    }
 		}
