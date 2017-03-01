@@ -26,19 +26,21 @@ import org.apache.http.util.EntityUtils;
 import org.bukkit.entity.Player;
 
 /**
- * An authentication tool for authenticating a player.
+ * An authentication tool for authenticating or gaining information about a
+ * player.
  */
 public class Authenticator {
     private CrackedLogin plugin;
     private URI uri; // the authentication url
     private HashSet<Player> authenticatedUsers; // players that have been
-					     // authenticated
+						// authenticated
 
     /**
      * Creates a new tool for authentication.
      * 
      * @param uri
      *            The URI to use for authentication.
+     * @param plugin The plugin.
      * @throws URISyntaxException
      *             Thrown if the given URI couldn't be parsed
      */
@@ -46,6 +48,10 @@ public class Authenticator {
 	this.uri = new URI(uri);
 	this.authenticatedUsers = new HashSet<Player>();
 	this.plugin = plugin;
+	
+	// add all of the current players to the authenticated list
+	for (Player player : plugin.getServer().getOnlinePlayers())
+	    authenticatedUsers.add(player);
     }
 
     /**
@@ -58,7 +64,7 @@ public class Authenticator {
     public boolean canJoin(Player player) {
 	boolean result = false;
 	try {
-	    result = get(new BasicNameValuePair("username", player.getName()), "canJoin");
+	    result = getBoolean(new BasicNameValuePair("username", player.getName()), "canJoin");
 	} catch (URISyntaxException | IOException e) {
 	    plugin.getLogger().log(Level.SEVERE, "Could not reach the authentication server!", e);
 	}
@@ -95,7 +101,7 @@ public class Authenticator {
     public boolean isBanned(Player player) {
 	boolean result = false;
 	try {
-	    result = get(new BasicNameValuePair("username", player.getName()), "isBanned");
+	    result = getBoolean(new BasicNameValuePair("username", player.getName()), "isBanned");
 	} catch (URISyntaxException | IOException e) {
 	    plugin.getLogger().log(Level.SEVERE, "Could not reach the authentication server!", e);
 	}
@@ -110,9 +116,20 @@ public class Authenticator {
      * @return Whether the user is registered.
      */
     public boolean isRegistered(Player player) {
+	return isRegistered(player.getName());
+    }
+    
+    /**
+     * Determines whether the given player is registered on the server.
+     * 
+     * @param player
+     *            The player to check.
+     * @return Whether the user is registered.
+     */
+    public boolean isRegistered(String player) {
 	boolean result = false;
 	try {
-	    result = get(new BasicNameValuePair("username", player.getName()), "isRegistered");
+	    result = getBoolean(new BasicNameValuePair("username", player), "isRegistered");
 	} catch (URISyntaxException | IOException e) {
 	    plugin.getLogger().log(Level.SEVERE, "Could not reach the authentication server!", e);
 	}
@@ -131,13 +148,41 @@ public class Authenticator {
     public boolean authenticate(Player player, String password) {
 	boolean result = false;
 	try {
-	    result = get(new NameValuePair[] { new BasicNameValuePair("username", player.getName()),
+	    result = getBoolean(new NameValuePair[] { new BasicNameValuePair("username", player.getName()),
 		    new BasicNameValuePair("password", password) }, "canAuthenticate");
 	} catch (URISyntaxException | IOException e) {
 	    plugin.getLogger().log(Level.SEVERE, "Could not reach the authentication server!", e);
 	}
 	if (result) {
 	    authenticatedUsers.add(player);
+	}
+	return result;
+    }
+
+    /**
+     * Gets the username of the owner for the given player.
+     * 
+     * @param player
+     *            The player to look up.
+     * @return The username of the player's owner.
+     */
+    public String getOwner(Player player) {
+	return getOwner(player.getName());
+    }
+    
+    /**
+     * Gets the username of the owner for the given player.
+     * 
+     * @param player
+     *            The player to look up.
+     * @return The username of the player's owner.
+     */
+    public String getOwner(String player) {
+	String result = "";
+	try {
+	    result = get(new BasicNameValuePair("username", player), "getOwner");
+	} catch (URISyntaxException | IOException e) {
+	    plugin.getLogger().log(Level.SEVERE, "Could not reach the authentication server!", e);
 	}
 	return result;
     }
@@ -152,8 +197,20 @@ public class Authenticator {
 	if (authenticatedUsers.contains(player)) {
 	    authenticatedUsers.remove(player);
 	}
+	player.kickPlayer("You are no longer authenticated.");
     }
 
+    /**
+     * Kicks any currently joined players that are not authenticated.
+     */
+    public void kickUnauthenticatedPlayers() {
+	for (Player player : plugin.getServer().getOnlinePlayers()) {
+	    if (!authenticatedUsers.contains(player)) {
+		player.kickPlayer(plugin.getConfig().getString("messages.OtherLoginKick"));
+	    }
+	}
+    }
+    
     /**
      * Determines whether a player is currently authenticated.
      * 
@@ -192,6 +249,64 @@ public class Authenticator {
     }
 
     /**
+     * Creates and executes a get request.
+     * 
+     * @param parameters
+     *            The get parameters.
+     * @param query
+     *            The query string.
+     * @return The response of the request.
+     * @throws URISyntaxException
+     *             Thrown if the given parameters are of invalid syntax.
+     * @throws IOException
+     *             Thrown if there is an error while making the request.
+     */
+    private String get(NameValuePair[] parameters, String query) throws IOException, URISyntaxException {
+	CloseableHttpClient httpclient = HttpClients.createMinimal();
+	String result;
+	try {
+	    // build the request
+	    HttpGet get = new HttpGet(
+		    new URIBuilder(this.uri).setParameters(parameters).setParameter("q", query).build());
+
+	    // create a custom response handler
+	    ResponseHandler<String> responseHandler = new ResponseHandler<String>() {
+		public String handleResponse(final HttpResponse response) throws ClientProtocolException, IOException {
+		    int status = response.getStatusLine().getStatusCode();
+		    if (status >= 200 && status < 300) {
+			HttpEntity entity = response.getEntity();
+			return entity != null ? EntityUtils.toString(entity) : null;
+		    } else {
+			throw new ClientProtocolException("Unexpected response status: " + status);
+		    }
+		}
+
+	    };
+	    result = httpclient.execute(get, responseHandler);
+	} finally {
+	    httpclient.close();
+	}
+	return result;
+    }
+
+    /**
+     * Creates and executes a get request.
+     * 
+     * @param parameter
+     *            The get parameter.
+     * @param query
+     *            The query string.
+     * @return The response of the request.
+     * @throws URISyntaxException
+     *             Thrown if the given parameters are of invalid syntax.
+     * @throws IOException
+     *             Thrown if there is an error while making the request.
+     */
+    private String get(NameValuePair parameter, String query) throws URISyntaxException, IOException {
+	return get(new NameValuePair[] { parameter }, query);
+    }
+
+    /**
      * Creates and executes a get request which returns a boolean.
      * 
      * @param parameters
@@ -204,36 +319,8 @@ public class Authenticator {
      * @throws IOException
      *             Thrown if there is an error while making the request.
      */
-    private boolean get(NameValuePair[] parameters, String query) throws IOException, URISyntaxException {
-
-	CloseableHttpClient httpclient = HttpClients.createMinimal();
-	boolean result = false;
-	try {
-	    // build the request
-	    HttpGet get = new HttpGet(
-		    new URIBuilder(this.uri).setParameters(parameters).setParameter("q", query).build());
-
-	    // create a custom response handler
-	    ResponseHandler<String> responseHandler = new ResponseHandler<String>() {
-
-		public String handleResponse(final HttpResponse response) throws ClientProtocolException, IOException {
-		    int status = response.getStatusLine().getStatusCode();
-		    if (status >= 200 && status < 300) {
-			HttpEntity entity = response.getEntity();
-			return entity != null ? EntityUtils.toString(entity) : null;
-		    } else {
-			throw new ClientProtocolException("Unexpected response status: " + status);
-		    }
-		}
-
-	    };
-	    // send the request and parse the response to a boolean
-	    String response = httpclient.execute(get, responseHandler);
-	    result = Boolean.parseBoolean(response);
-	} finally {
-	    httpclient.close();
-	}
-	return result;
+    private boolean getBoolean(NameValuePair[] parameters, String query) throws IOException, URISyntaxException {
+	return Boolean.parseBoolean(get(parameters, query));
     }
 
     /**
@@ -249,8 +336,7 @@ public class Authenticator {
      * @throws IOException
      *             Thrown if there is an error while making the request.
      */
-    private boolean get(NameValuePair parameter, String query) throws URISyntaxException, IOException {
-	return get(new NameValuePair[] { parameter }, query);
+    private boolean getBoolean(NameValuePair parameter, String query) throws URISyntaxException, IOException {
+	return Boolean.parseBoolean(get(parameter, query));
     }
-
 }

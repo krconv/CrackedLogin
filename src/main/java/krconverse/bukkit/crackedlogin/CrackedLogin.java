@@ -10,6 +10,7 @@ import java.net.URISyntaxException;
 import java.util.logging.Level;
 
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import com.comphenix.protocol.ProtocolLibrary;
@@ -55,9 +56,20 @@ public class CrackedLogin extends JavaPlugin {
 	// load up the packet listener
 	this.packetAdapter = new PacketAdapter(this);
 
-	// register the login listener
-	getServer().getPluginManager().registerEvents(new PlayerLoginListener(this), this);
+	// register the listeners
+	PluginManager pluginManager = getServer().getPluginManager();
+	pluginManager.registerEvents(new PlayerLoginListener(this), this);
+	
+	// register the command executor
+	this.getCommand("whois").setExecutor(new CommandExecuter(this));
+    }
 
+    /* (non-Javadoc)
+     * @see org.bukkit.plugin.java.JavaPlugin#onDisable()
+     */
+    @Override
+    public void onDisable() {
+	authenticator.kickUnauthenticatedPlayers();
     }
 
     /**
