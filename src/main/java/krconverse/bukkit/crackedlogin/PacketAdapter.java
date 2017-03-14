@@ -12,7 +12,6 @@ import java.util.LinkedList;
 import java.util.Queue;
 import java.util.logging.Level;
 
-import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 
 import com.comphenix.packetwrapper.WrapperPlayClientChat;
@@ -25,12 +24,15 @@ import com.comphenix.protocol.events.PacketContainer;
 import com.comphenix.protocol.events.PacketEvent;
 import com.comphenix.protocol.wrappers.WrappedChatComponent;
 
+import net.md_5.bungee.api.ChatColor;
+
 /**
  * A listener which controls the flow of packets between players and the server.
  */
 public class PacketAdapter extends com.comphenix.protocol.events.PacketAdapter {
     private CrackedLogin plugin;
-    private boolean isListening;
+
+    private HashSet<Player> filteredPlayers;
     private HashMap<Player, Queue<PacketContainer>> queuedPackets;
     private HashSet<String> allowedPackets;
 
@@ -46,7 +48,7 @@ public class PacketAdapter extends com.comphenix.protocol.events.PacketAdapter {
     public PacketAdapter(CrackedLogin plugin) {
 	super(plugin, ListenerPriority.NORMAL, PacketType.values());
 	this.plugin = plugin;
-	this.isListening = false;
+	this.filteredPlayers = new HashSet<Player>();
 	this.queuedPackets = new HashMap<Player, Queue<PacketContainer>>();
 	this.allowedPackets = new HashSet<String>();
 
@@ -56,23 +58,57 @@ public class PacketAdapter extends com.comphenix.protocol.events.PacketAdapter {
     }
 
     /**
-     * Turns packet listening on.
+     * Starts listening for packets to the given player and blocking not-allowed
+     * packets.
+     * 
+     * @param player
+     *            The player to filter packets to/from.
      */
-    public void startListening() {
-	if (!isListening) {
+    public void startFilteringPlayer(Player player) {
+	if (filteredPlayers.isEmpty()) // need to start listening for all
+				       // packets
 	    plugin.getProtocolManager().addPacketListener(this);
-	    isListening = true;
-	}
+
+	filteredPlayers.add(player);
+	if (!queuedPackets.containsKey(player))
+	    queuedPackets.put(player, new LinkedList<PacketContainer>());
     }
 
     /**
-     * Turns packet listening off and clears the queued packets.
+     * Stops listening for packets to the given player.
+     * 
+     * @param player
+     *            The player to stop filtering packets to/from.
+     * @param sendPackets
+     *            Whether to send the queued packets for this player.
      */
-    public void stopListening() {
-	if (isListening) {
+    public void stopFilteringPlayer(Player player, boolean sendPackets) {
+	if (filteredPlayers.contains(player))
+	    filteredPlayers.remove(player);
+
+	if (filteredPlayers.isEmpty())
 	    plugin.getProtocolManager().removePacketListener(this);
-	    isListening = false;
-	    queuedPackets.clear();
+
+	if (sendPackets)
+	    sendPackets(player, queuedPackets.get(player));
+	queuedPackets.remove(player);
+    }
+
+    /**
+     * Sends all of the given packets.
+     * 
+     * @param player
+     *            The player to send packets to.
+     * @param packets
+     *            The packets to send.
+     */
+    private void sendPackets(Player player, Queue<PacketContainer> packets) {
+	for (PacketContainer sent : packets) {
+	    try {
+		plugin.getProtocolManager().sendServerPacket(player, sent);
+	    } catch (InvocationTargetException e) {
+		plugin.getLogger().log(Level.WARNING, "Failed to send a packet!", e);
+	    }
 	}
     }
 
@@ -85,40 +121,24 @@ public class PacketAdapter extends com.comphenix.protocol.events.PacketAdapter {
     @Override
     public void onPacketReceiving(PacketEvent event) {
 	if (event.getPacketType().getProtocol() == Protocol.PLAY) {
-	    if (event.getPlayer() != null && !plugin.getAuthenticator().isAuthenticated(event.getPlayer())) {
-		// the player isn't authenticated
+	    if (filteredPlayers.contains(event.getPlayer())) {
+		// the player is being filtered
 		event.setCancelled(true);
 		if (event.getPacketType() == PacketType.Play.Client.CHAT) {
 		    // the player sent a message, consider it the password
 		    String password = (String) new WrapperPlayClientChat(event.getPacket()).getMessage().toString();
-		    if (plugin.getAuthenticator().authenticate(event.getPlayer(), password)) {
-			// the password login was successful, so send all of the
-			// queued passwords
-			for (PacketContainer sent : queuedPackets.get(event.getPlayer())) {
-			    try {
-				plugin.getProtocolManager().sendServerPacket(event.getPlayer(), sent);
-			    } catch (InvocationTargetException e) {
-				plugin.getLogger().log(Level.WARNING, "Failed to send a packet!", e);
-			    }
-			}
-			// stop listening to packets if all players are
-			// authenticated
-			if (!plugin.getAuthenticator().anyUnauthenticated()) {
-			    // don't need to listen to packets anymore
-			    stopListening();
-			}
-			queuedPackets.remove(event.getPlayer());
-			// broadcast the login message
-			plugin.getServer().broadcastMessage(
-				ChatColor.YELLOW + event.getPlayer().getName() + " has joined the game");
-			event.getPlayer().setInvulnerable(false);
-		    } else { // invalid login attempt
+		    boolean authenticated = plugin.getAuthenticator().authenticate(event.getPlayer(), password);
+		    if (!authenticated) {
 			plugin.getServer().getScheduler().runTask(plugin, new Runnable() {
 			    public void run() {
 				event.getPlayer().kickPlayer(plugin.getConfig().getString("messages.InvalidLogin"));
 			    }
 			});
+		    } else {
+			event.getPlayer().setInvulnerable(false);
+			plugin.getServer().broadcastMessage(ChatColor.YELLOW + event.getPlayer().getName() + " has joined the game.");
 		    }
+		    stopFilteringPlayer(event.getPlayer(), authenticated);
 		}
 	    }
 	}
@@ -134,7 +154,7 @@ public class PacketAdapter extends com.comphenix.protocol.events.PacketAdapter {
     @Override
     public void onPacketSending(PacketEvent event) {
 	if (event.getPacketType().getProtocol() == Protocol.PLAY) {
-	    if (event.getPlayer() != null && !plugin.getAuthenticator().isAuthenticated(event.getPlayer())) {
+	    if (filteredPlayers.contains(event.getPlayer())) {
 		if (!allowedPackets.contains(event.getPacketType().name())) {
 		    boolean isAllowed = false;
 
@@ -147,14 +167,8 @@ public class PacketAdapter extends com.comphenix.protocol.events.PacketAdapter {
 			}
 		    }
 		    if (!isAllowed) {
-			// we can't send this packet to an unauthenticated
-			// player
+			// we can't send this packet to a filtered player
 			event.setCancelled(true);
-			// add the packet to the queue to send the player after
-			// authentication
-			if (!queuedPackets.containsKey(event.getPlayer())) {
-			    queuedPackets.put(event.getPlayer(), new LinkedList<PacketContainer>());
-			}
 			queuedPackets.get(event.getPlayer()).add(event.getPacket());
 			// send fake needed packets
 			if (event.getPacketType() == PacketType.Play.Server.POSITION) {

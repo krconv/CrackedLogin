@@ -5,7 +5,6 @@
  */
 package krconverse.bukkit.crackedlogin;
 
-import java.util.LinkedList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
@@ -59,7 +58,7 @@ public class PlayerLoginListener implements Listener {
 
 	// need to pause the player's communication to server until it
 	// authenticates
-	plugin.getPacketAdapter().startListening();
+	plugin.getPacketAdapter().startFilteringPlayer(player);
 	
 	// timeout the player after configured timeout
 	Executors.newSingleThreadScheduledExecutor().schedule(new Runnable() {
@@ -90,33 +89,13 @@ public class PlayerLoginListener implements Listener {
      *            The event arguments
      */
     @EventHandler
-    public void onQuit(PlayerQuitEvent event) {
+    public void onLeave(PlayerQuitEvent event) {
 	// don't show the quit message if the user never authenticated
 	if (!plugin.getAuthenticator().isAuthenticated(event.getPlayer())) {
-		event.setQuitMessage(null);
+	    plugin.getPacketAdapter().stopFilteringPlayer(event.getPlayer(), false);
+	    event.setQuitMessage(null);
 	}
-	deauthenticate(event.getPlayer());
-    }
-
-    /**
-     * Deauthenticates a player and stops the packet listener if it was the last
-     * unauthenticated player.
-     * 
-     * @param player
-     *            The player to deauthenticate
-     */
-    private void deauthenticate(Player player) {
-	// deauthenticate the player that quit
-	if (plugin.getAuthenticator().isAuthenticated(player)) {
-	    plugin.getAuthenticator().deauthenticate(player);
-	    // stop the packet listener if there are no other unauthenticated
-	    // players
-	    LinkedList<Player> players = new LinkedList<Player>(plugin.getServer().getOnlinePlayers());
-	    players.remove(player);
-	    if (!plugin.getAuthenticator().anyUnauthenticated(players)) {
-		plugin.getPacketAdapter().stopListening();
-	    }
-	}
+	plugin.getAuthenticator().deauthenticate(event.getPlayer());
     }
 
     /**

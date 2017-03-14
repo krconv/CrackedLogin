@@ -150,6 +150,7 @@ public class Authenticator {
 	try {
 	    result = getBoolean(new NameValuePair[] { new BasicNameValuePair("username", player.getName()),
 		    new BasicNameValuePair("password", password) }, "canAuthenticate");
+	    
 	} catch (URISyntaxException | IOException e) {
 	    plugin.getLogger().log(Level.SEVERE, "Could not reach the authentication server!", e);
 	}
@@ -197,7 +198,6 @@ public class Authenticator {
 	if (authenticatedUsers.contains(player)) {
 	    authenticatedUsers.remove(player);
 	}
-	player.kickPlayer("You are no longer authenticated.");
     }
 
     /**
