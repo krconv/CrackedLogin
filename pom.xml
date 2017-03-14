@@ -26,7 +26,7 @@
 	<build>
 		<resources>
 			<resource>
-				<directory></directory>
+				<directory>.</directory>
 				<includes>
 					<include>plugin.yml</include>
 					<include>config.yml</include>
@@ -104,61 +104,4 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<mainClassPath>krconverse.bukkit.crackedlogin.CrackedLogin</mainClassPath>
 	</properties>
-	<profiles>
-		<profile>
-			<id>m2e</id>
-			<!-- This profile is only active when the property "m2e.version" is set, 
-				which is the case when building in Eclipse with m2e. -->
-			<activation>
-				<property>
-					<name>m2e.version</name>
-				</property>
-			</activation>
-			<build>
-				<pluginManagement>
-					<plugins>
-						<plugin>
-							<groupId>org.eclipse.m2e</groupId>
-							<artifactId>lifecycle-mapping</artifactId>
-							<version>1.0.0</version>
-							<configuration>
-								<lifecycleMappingMetadata>
-									<pluginExecutions>
-										<pluginExecution>
-											<pluginExecutionFilter>
-												<groupId>...</groupId>
-												<artifactId>...</artifactId>
-												<versionRange>[0,)</versionRange>
-												<goals>
-													<goal>...</goal>
-												</goals>
-											</pluginExecutionFilter>
-											<action>
-
-												<!-- either <ignore> XOR <execute>, you must remove the other 
-													one. -->
-
-												<!-- execute: tells m2e to run the execution just like command-line 
-													maven. from m2e's point of view, this is not recommended, because it is not 
-													deterministic and may make your eclipse unresponsive or behave strangely. -->
-												<execute>
-													<!-- runOnIncremental: tells m2e to run the plugin-execution 
-														on each auto-build (true) or only on full-build (false). -->
-													<runOnIncremental>false</runOnIncremental>
-												</execute>
-
-												<!-- ignore: tells m2eclipse to skip the execution. -->
-												<ignore />
-
-											</action>
-										</pluginExecution>
-									</pluginExecutions>
-								</lifecycleMappingMetadata>
-							</configuration>
-						</plugin>
-					</plugins>
-				</pluginManagement>
-			</build>
-		</profile>
-	</profiles>
 </project>
