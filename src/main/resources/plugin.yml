@@ -13,4 +13,4 @@ commands:
 permissions:
     crackedlogin.command.whois:
         description: Gives access to /whois command
-        default: false
+        default: op
