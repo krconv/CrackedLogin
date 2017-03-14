@@ -8,4 +8,9 @@ commands:
     whois:
         description: Retrieves information about the owner of the given user.
         usage: /whois <player>
-        permission-message: You don't have permission.
+        permission: crackedlogin.command.whois
+        permission-message: §cYou don't have permission.
+permissions:
+    crackedlogin.command.whois:
+        description: Gives access to /whois command
+        default: false
