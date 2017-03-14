@@ -3,6 +3,8 @@ authentication:
     UseHTTPS: true
     Host: hostname
     Path: path
+    Port: port
+    Timeout: timeout
   Timeout: 7
   AllowedPackets:
   - KEEP_ALIVE
