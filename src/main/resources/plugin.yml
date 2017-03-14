@@ -1,5 +1,5 @@
-name: CrackedLogin
-version: 0.0.1
+name: ${project.name}
+version: ${project.version}
 load: STARTUP
 author: krconv
 main: krconverse.bukkit.crackedlogin.CrackedLogin

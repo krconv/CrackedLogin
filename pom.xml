@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>krconverse.bukkit</groupId>
 	<artifactId>CrackedLogin</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>1.0.0</version>
 	<name>CrackedLogin</name>
 	<description>A plugin which will authenticate a user using a remote authentication system.</description>
 	<repositories>
@@ -25,14 +25,21 @@
 	</repositories>
 	<build>
 		<resources>
-			<resource>
-				<directory>.</directory>
-				<includes>
-					<include>plugin.yml</include>
-					<include>config.yml</include>
-				</includes>
-			</resource>
-		</resources>
+	      <resource>
+	        <directory>src/main/resources</directory>
+	        <filtering>true</filtering>
+	        <includes>
+	          <include>plugin.yml</include>
+	        </includes>
+	      </resource>
+	      <resource>
+	        <directory>src/main/resources</directory>
+	        <filtering>false</filtering>
+	        <excludes>
+	          <exclude>plugin.yml</exclude>
+	        </excludes>
+	      </resource>
+	    </resources>
 		<plugins>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
