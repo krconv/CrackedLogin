@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>krconverse.bukkit</groupId>
 	<artifactId>CrackedLogin</artifactId>
-	<version>1.0.0</version>
+	<version>1.1.0</version>
 	<name>CrackedLogin</name>
 	<description>A plugin which will authenticate a user using a remote authentication system.</description>
 	<repositories>
@@ -83,7 +83,7 @@
 		<dependency>
 			<groupId>com.comphenix.protocol</groupId>
 			<artifactId>ProtocolLib-API</artifactId>
-			<version>4.1.0</version>
+			<version>4.3.0</version>
 			<scope>provided</scope>
 		</dependency>
 		<dependency>
@@ -96,14 +96,14 @@
 		<dependency>
 			<groupId>org.spigotmc</groupId>
 			<artifactId>spigot-api</artifactId>
-			<version>1.11.2-R0.1-SNAPSHOT</version>
+			<version>1.12.2-R0.1-SNAPSHOT</version>
 			<scope>provided</scope>
 		</dependency>
 		<!--Bukkit API -->
 		<dependency>
 			<groupId>org.bukkit</groupId>
 			<artifactId>bukkit</artifactId>
-			<version>1.11.2-R0.1-SNAPSHOT</version>
+			<version>1.12.2-R0.1-SNAPSHOT</version>
 			<scope>provided</scope>
 		</dependency>
 	</dependencies>
