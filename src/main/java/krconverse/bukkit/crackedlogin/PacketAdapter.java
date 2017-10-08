@@ -122,23 +122,26 @@ public class PacketAdapter extends com.comphenix.protocol.events.PacketAdapter {
     public void onPacketReceiving(PacketEvent event) {
 	if (event.getPacketType().getProtocol() == Protocol.PLAY) {
 	    if (filteredPlayers.contains(event.getPlayer())) {
-		// the player is being filtered
-		event.setCancelled(true);
-		if (event.getPacketType() == PacketType.Play.Client.CHAT) {
-		    // the player sent a message, consider it the password
-		    String password = (String) new WrapperPlayClientChat(event.getPacket()).getMessage().toString();
-		    boolean authenticated = plugin.getAuthenticator().authenticate(event.getPlayer(), password);
-		    if (!authenticated) {
-			plugin.getServer().getScheduler().runTask(plugin, new Runnable() {
-			    public void run() {
-				event.getPlayer().kickPlayer(plugin.getConfig().getString("messages.InvalidLogin"));
-			    }
-			});
-		    } else {
-			event.getPlayer().setInvulnerable(false);
-			plugin.getServer().broadcastMessage(ChatColor.YELLOW + event.getPlayer().getName() + " has joined the game.");
+		if (!allowedPackets.contains(event.getPacketType().name())) {
+		    // the player is being filtered
+		    event.setCancelled(true);
+		    if (event.getPacketType() == PacketType.Play.Client.CHAT) {
+			// the player sent a message, consider it the password
+			String password = (String) new WrapperPlayClientChat(event.getPacket()).getMessage().toString();
+			boolean authenticated = plugin.getAuthenticator().authenticate(event.getPlayer(), password);
+			if (!authenticated) {
+			    plugin.getServer().getScheduler().runTask(plugin, new Runnable() {
+				public void run() {
+				    event.getPlayer().kickPlayer(plugin.getConfig().getString("messages.InvalidLogin"));
+				}
+			    });
+			} else {
+			    event.getPlayer().setInvulnerable(false);
+			    plugin.getServer().broadcastMessage(
+				    ChatColor.YELLOW + event.getPlayer().getName() + " has joined the game.");
+			}
+			stopFilteringPlayer(event.getPlayer(), authenticated);
 		    }
-		    stopFilteringPlayer(event.getPlayer(), authenticated);
 		}
 	    }
 	}
