@@ -46,7 +46,9 @@ public class PlayerLoginListener implements Listener {
 	final Player player = event.getPlayer();
 	if (!plugin.getAuthenticator().canJoin(player)) {
 	    // the player isn't allowed to join
-	    if (plugin.getAuthenticator().isBanned(player)) {
+	    if (!plugin.getAuthenticator().isOnline()) {
+		event.disallow(Result.KICK_OTHER, plugin.getConfig().getString("messages.AuthenticationNotOnlineKick"));
+	    } else if (plugin.getAuthenticator().isBanned(player)) {
 		event.disallow(Result.KICK_BANNED, plugin.getConfig().getString("messages.BannedLoginKick"));
 	    } else if (!plugin.getAuthenticator().isRegistered(player)) {
 		event.disallow(Result.KICK_WHITELIST, plugin.getConfig().getString("messages.NotRegisteredLoginKick"));

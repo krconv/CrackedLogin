@@ -53,6 +53,22 @@ public class Authenticator {
 	for (Player player : plugin.getServer().getOnlinePlayers())
 	    authenticatedUsers.add(player);
     }
+    
+    /**
+     * Determines whether the authenticator is online.
+     * 
+     * @return Whether the authentication is online..
+     */
+    public boolean isOnline() {
+	boolean result = false;
+	try {
+	    result = getBoolean(new BasicNameValuePair[] {}, "isOnline");
+	} catch (URISyntaxException | IOException e) {
+	    plugin.getLogger().log(Level.SEVERE, "Could not reach the authentication server!", e);
+	}
+	return result;
+    }
+
 
     /**
      * Determines whether the given player is allowed to join the server.

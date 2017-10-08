@@ -11,6 +11,7 @@ authentication:
   - LOGIN
   - KICK_DISCONNECT
 messages:
+  AuthenticationNotOnlineKick: We couldn't reach the authentication server! You should contact an administrator.
   NotRegisteredLoginKick: You are not registered!
   BannedLoginKick: You are banned!
   OtherLoginKick: You cannot log in! Contact an administrator if you believe this is incorrect.
