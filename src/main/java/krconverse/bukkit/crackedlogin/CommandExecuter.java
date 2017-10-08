@@ -32,8 +32,10 @@ public class CommandExecuter implements CommandExecutor {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
 	if (command.getName().equalsIgnoreCase("whois")) {
-	    if (args.length == 1) {
+	    if (args.length >= 1) {
 		String player = args[0];
+		for (int i = 1; i < args.length; i++)
+		    player += " " + args[i];
 		if (!plugin.getAuthenticator().isRegistered(player)) { // player isn't valid
 		    sender.sendMessage(ChatColor.RED + "\"" + player + "\" is not a registered user.");
 		    return true;
